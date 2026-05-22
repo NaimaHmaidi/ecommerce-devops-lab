@@ -1,0 +1,67 @@
+---
+- name: Deploy E-Commerce App
+  hosts: web
+  become: yes
+  tasks:
+
+    - name: Update system
+      yum:
+        name: '*'
+        state: latest
+      ignore_errors: yes
+
+    - name: Install Docker
+      yum:
+        name: docker
+        state: present
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Create app directory
+      file:
+        path: /home/ec2-user/app
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: docker-compose.yml
+        dest: /home/ec2-user/app/docker-compose.yml
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Copy nginx.conf
+      copy:
+        src: nginx.conf
+        dest: /home/ec2-user/app/nginx.conf
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Copy app files
+      copy:
+        src: app/
+        dest: /home/ec2-user/app/app/
+        owner: ec2-user
+        group: ec2-user
+
+    - name: Run Docker Compose
+      shell: |
+        cd /home/ec2-user/app
+        /usr/local/bin/docker-compose up -d --build
